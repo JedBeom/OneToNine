@@ -7,6 +7,50 @@ import (
 	"time"
 )
 
+func CheckAnswerValidation(Challenger string) bool {
+	if len(Challenger) != 3 {
+		return false
+	}
+
+	for x := 0; x < 2; x++ {
+		for y := 1; y < 3; y++ {
+			if x == y {
+				continue
+			}
+
+			if Challenger[x] == Challenger[y] {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func Checker(Original string, Challenger string) (StrikeCount int, BallCount int) {
+
+	// Strike Check
+	for x := 0; x < 3; x++ {
+		if Original[x] == Challenger[x] {
+			StrikeCount++
+		}
+	}
+
+	// Ball Check
+	for x := 0; x < 3; x++ {
+		for y := 0; y < 3; y++ {
+			if x == y {
+				continue
+			}
+
+			if Original[x] == Challenger[y] {
+				BallCount++
+			}
+		}
+	}
+	return
+}
+
 func RandomOneToNine() string {
 	// 현 시간을 시드로 받아옴.
 	rand.Seed(time.Now().UnixNano())
@@ -18,13 +62,13 @@ func RandomOneToNine() string {
 	return StrNumber
 }
 
-func GetThreeRandomNumber() {
-	var AnswerNumber []string
+func GetThreeRandomNumber() (AnswerNumber string) {
+	var AnswerNumberSlice []string
 
 	// 중복 상관 없이 무작위 숫자 3개를 뽑는다.
-	for len(AnswerNumber) < 3 {
+	for len(AnswerNumberSlice) < 3 {
 		number := RandomOneToNine()
-		AnswerNumber = append(AnswerNumber, number)
+		AnswerNumberSlice = append(AnswerNumberSlice, number)
 	}
 
 	// 숫자들의 중복 확인을 한 후 중복된 숫자를 바꾼다.
@@ -40,22 +84,54 @@ func GetThreeRandomNumber() {
 
 			// 만약 [x]와 [y]가 같을 경우 y의 숫자를 다시 뽑는다.
 			// 그래도 같으면 반복.
-			for AnswerNumber[x] == AnswerNumber[y] {
+			for AnswerNumberSlice[x] == AnswerNumberSlice[y] {
 				number := RandomOneToNine()
-				AnswerNumber[y] = number
+				AnswerNumberSlice[y] = number
 			}
 		}
 	}
+	AnswerNumber = AnswerNumberSlice[0] + AnswerNumberSlice[1] + AnswerNumberSlice[2]
 
-	fmt.Println(AnswerNumber)
+	return
+
+}
+
+func play() {
+
+	answer := GetThreeRandomNumber()
+	fmt.Println("무작위 세 숫자를 뽑았습니다.")
+
+	fmt.Println("추리를 시작하세요.")
+
+	TryCount := 0
+	var Challenger string
+
+	for {
+		fmt.Print("> ")
+		fmt.Scanf("%v", &Challenger)
+
+		isItValid := CheckAnswerValidation(Challenger)
+
+		if !isItValid {
+			fmt.Println("각기 다른 세자리 숫자를 입력해주세요!")
+			continue
+		}
+
+		strike, ball := Checker(answer, Challenger)
+
+		if strike == 3 {
+			fmt.Print("정답! ", TryCount+1, "회의 시도 끝에 성공하였습니다.\n")
+			break
+		} else if strike == 0 && ball == 0 {
+			fmt.Println("아웃!")
+		} else {
+			fmt.Println(strike, "스트라이크,", ball, "볼!")
+		}
+
+		TryCount++
+	}
 }
 
 func main() {
-
-	// 테스트용 무한 루프.
-	for {
-		GetThreeRandomNumber()
-		// Seed가 달라야하니 1초 쉬기
-		time.Sleep(time.Second)
-	}
+	play()
 }

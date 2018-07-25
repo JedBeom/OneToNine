@@ -13,3 +13,6 @@
 
 # Compiled File
 OneToNine
+
+# Vim swp file
+*.swp
