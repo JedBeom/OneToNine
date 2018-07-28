@@ -1,12 +1,19 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"math"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"time"
 )
+
+type Post struct {
+	Userkey string `json:"user_key"`
+	Type    string `json:"type"`
+	Content string `json:"content"`
+}
 
 func CheckAnswerValidation(Challenger string) bool {
 	if len(Challenger) != 3 {
@@ -55,7 +62,7 @@ func Checker(Original string, Challenger string) (StrikeCount int, BallCount int
 func ScoreCalculater(StartTime time.Time, EndTime time.Time, TryCount int) int {
 	SpendedTimeFloat := EndTime.Sub(StartTime).Seconds()
 
-	SpendedTime := int(math.Round(SpendedTimeFloat))
+	SpendedTime := int(SpendedTimeFloat)
 
 	//(180-경과 시간(초)-횟수*5)*100
 	fmt.Println("SpendedTime:", SpendedTime)
@@ -121,6 +128,50 @@ func play() {
 	}
 }
 
+func messageHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	template := `{
+	"message":{
+		"text" : "%v"
+	}
+}`
+	var post Post
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&post)
+
+	if err != nil {
+		w.WriteHeader(400)
+		return
+	}
+
+	if post.Type != "text" {
+		response := fmt.Sprintf(template, "텍스트 전송만 지원됩니다.")
+		w.Write([]byte(response))
+		return
+	}
+
+	response := fmt.Sprintf(template, post.Userkey+post.Content)
+	w.Write([]byte(response))
+
+}
+
+func keyboardHandler(w http.ResponseWriter, r *http.Request) {
+	template := `{
+	"type": "text"
+}`
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	w.Write([]byte(template))
+}
+
 func main() {
-	play()
+	server := http.Server{
+		Addr: ":8080",
+	}
+
+	http.HandleFunc("/keyboard", keyboardHandler)
+	http.HandleFunc("/message", messageHandler)
+
+	server.ListenAndServe()
 }
