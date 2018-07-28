@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strconv"
 	"time"
@@ -51,46 +52,28 @@ func Checker(Original string, Challenger string) (StrikeCount int, BallCount int
 	return
 }
 
-func RandomOneToNine() string {
-	// 현 시간을 시드로 받아옴.
-	rand.Seed(time.Now().UnixNano())
-	// 1-9까지의 숫자를 무작위 생성.
-	IntNumber := rand.Intn(9) + 1
-	// int를 str로 변환.
-	StrNumber := strconv.Itoa(IntNumber)
+func ScoreCalculater(StartTime time.Time, EndTime time.Time, TryCount int) int {
+	SpendedTimeFloat := EndTime.Sub(StartTime).Seconds()
 
-	return StrNumber
+	SpendedTime := int(math.Round(SpendedTimeFloat))
+
+	//(180-경과 시간(초)-횟수*5)*100
+	fmt.Println("SpendedTime:", SpendedTime)
+	fmt.Println("TryCount:", TryCount)
+	score := (180 - SpendedTime - TryCount*5) * 100
+
+	return score
 }
 
 func GetThreeRandomNumber() (AnswerNumber string) {
-	var AnswerNumberSlice []string
+	n := 0
+	rand.Seed(time.Now().UnixNano())
+	r := rand.Perm(9)
 
-	// 중복 상관 없이 무작위 숫자 3개를 뽑는다.
-	for len(AnswerNumberSlice) < 3 {
-		number := RandomOneToNine()
-		AnswerNumberSlice = append(AnswerNumberSlice, number)
+	for n < 3 {
+		AnswerNumber += strconv.Itoa(1 + r[n])
+		n += 1
 	}
-
-	// 숫자들의 중복 확인을 한 후 중복된 숫자를 바꾼다.
-
-	// x의 인덱스가 2까지 갈 필요는 없으니...
-	for x := 0; x < 2; x++ {
-		// y는 1부터 2까지 있으면 된다.
-		for y := 1; y < 3; y++ {
-			// 같은 인덱스끼리 비교하면 무한 루프니까 continue
-			if x == y {
-				continue
-			}
-
-			// 만약 [x]와 [y]가 같을 경우 y의 숫자를 다시 뽑는다.
-			// 그래도 같으면 반복.
-			for AnswerNumberSlice[x] == AnswerNumberSlice[y] {
-				number := RandomOneToNine()
-				AnswerNumberSlice[y] = number
-			}
-		}
-	}
-	AnswerNumber = AnswerNumberSlice[0] + AnswerNumberSlice[1] + AnswerNumberSlice[2]
 
 	return
 
@@ -106,6 +89,8 @@ func play() {
 	TryCount := 0
 	var Challenger string
 
+	StartTime := time.Now()
+
 	for {
 		fmt.Print("> ")
 		fmt.Scanf("%v", &Challenger)
@@ -120,7 +105,11 @@ func play() {
 		strike, ball := Checker(answer, Challenger)
 
 		if strike == 3 {
-			fmt.Print("정답! ", TryCount+1, "회의 시도 끝에 성공하였습니다.\n")
+			EndTime := time.Now()
+			score := ScoreCalculater(StartTime, EndTime, TryCount+1)
+
+			fmt.Print("정답! 내 점수는 ", score, "입니다.\n")
+
 			break
 		} else if strike == 0 && ball == 0 {
 			fmt.Println("아웃!")
