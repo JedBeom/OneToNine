@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jinzhu/gorm"
+	_ "github.com/lib/pq"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -13,6 +15,34 @@ type Post struct {
 	Userkey string `json:"user_key"`
 	Type    string `json:"type"`
 	Content string `json:"content"`
+}
+
+type Playing struct {
+	Userkey      string    `sql:"not null"`
+	CreatedAt    time.Time `sql:"not null"`
+	TryCount     int       `sql:"not null"`
+	AnswerNumber string    `sql:"not null"`
+}
+
+type Record struct {
+	Userkey   string    `sql:"not null"`
+	CreatedAt time.Time `sql:"not null"`
+	Nickname  string    `sql:"not null"`
+	Score     int       `sql:"not null"`
+}
+
+var Db *gorm.DB
+
+func init() {
+	var err error
+	Db, err = gorm.Open("postgres", "user=golang dbname=onetonine password=ilovegolang sslmode=disable")
+
+	if err != nil {
+		panic(err)
+	}
+
+	Db.AutoMigrate(&Playing{}, &Record{})
+
 }
 
 func CheckAnswerValidation(Challenger string) bool {
@@ -128,17 +158,27 @@ func play() {
 	}
 }
 
-func messageHandler(w http.ResponseWriter, r *http.Request) {
+func sendMessage(w http.ResponseWriter, message string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
 	template := `{
 	"message":{
 		"text" : "%v"
 	}
 }`
+
+	response := fmt.Sprintf(template, message)
+	w.Write([]byte(response))
+	return
+}
+
+func messageHandler(w http.ResponseWriter, r *http.Request) {
+	var playing Playing
+
 	var post Post
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&post)
+
+	playing.Userkey = post.Userkey
 
 	if err != nil {
 		w.WriteHeader(400)
@@ -146,14 +186,26 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if post.Type != "text" {
-		response := fmt.Sprintf(template, "텍스트 전송만 지원됩니다.")
-		w.Write([]byte(response))
+		sendMessage(w, "텍스트 전송만 지원됩니다.")
 		return
 	}
 
-	response := fmt.Sprintf(template, post.Userkey+post.Content)
-	w.Write([]byte(response))
+	switch post.Content {
+	case "시작":
+		if err := Db.Where("userkey = $1", playing.Userkey).First(&playing).Error; err != nil {
+			playing.AnswerNumber = GetThreeRandomNumber()
+			Db.Create(&playing)
+			sendMessage(w, "게임이 시작되었습니다. 추리를 시작해주세요.")
+			return
 
+		} else {
+			sendMessage(w, "이미 게임이 진행 중입니다.")
+			return
+		}
+	default:
+		sendMessage(w, `"시작"만 알아들을 수 있어요!`)
+		return
+	}
 }
 
 func keyboardHandler(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +219,7 @@ func keyboardHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	server := http.Server{
-		Addr: ":8080",
+		Addr: ":80",
 	}
 
 	http.HandleFunc("/keyboard", keyboardHandler)
