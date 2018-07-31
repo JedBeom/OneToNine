@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq"
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -48,6 +50,12 @@ func init() {
 func CheckAnswerValidation(Challenger string) bool {
 	if len(Challenger) != 3 {
 		return false
+	}
+
+	for i := range Challenger {
+		if Challenger[i] == byte('0') {
+			return false
+		}
 	}
 
 	for x := 0; x < 2; x++ {
@@ -158,7 +166,7 @@ func play() {
 	}
 }
 
-func sendMessage(w http.ResponseWriter, message string) {
+func sendMessage(w http.ResponseWriter, message ...string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	template := `{
 	"message":{
@@ -166,7 +174,7 @@ func sendMessage(w http.ResponseWriter, message string) {
 	}
 }`
 
-	response := fmt.Sprintf(template, message)
+	response := fmt.Sprintf(template, strings.Join(message, ""))
 	w.Write([]byte(response))
 	return
 }
@@ -202,8 +210,55 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 			sendMessage(w, "이미 게임이 진행 중입니다.")
 			return
 		}
+	case "순위":
+		sendMessage(w, "순위 기능은 아직 미구현!")
+		return
 	default:
-		sendMessage(w, `"시작"만 알아들을 수 있어요!`)
+		if _, err := strconv.Atoi(post.Content); err != nil {
+			sendMessage(w, "'시작', '순위'를 입력하실 수 있습니다.")
+			return
+		}
+
+		if isItValid := CheckAnswerValidation(post.Content); !isItValid {
+			sendMessage(w, "모두 다른 세개의 숫자를 입력해주세요.")
+			return
+		}
+
+		if err := Db.Where("userkey = $1", playing.Userkey).First(&playing).Error; err == nil {
+			playing.TryCount++
+
+			strike, ball := Checker(playing.AnswerNumber, post.Content)
+
+			if strike == 3 {
+				now := time.Now()
+
+				score := ScoreCalculater(playing.CreatedAt, now, playing.TryCount-1)
+
+				var record Record
+
+				record.Score = score
+				record.Userkey = post.Userkey
+				record.Nickname = "미지정"
+
+				Db.Create(&record)
+				Db.Delete(Playing{}, "userkey LIKE ?", post.Userkey)
+
+				sendMessage(w, "정답입니다! 당신의 점수는 "+strconv.Itoa(score)+"입니다!\n닉네임을 지정해주세요.")
+				return
+
+			} else if strike == 0 && ball == 0 {
+				sendMessage(w, "아웃!")
+				Db.Save(&playing)
+				return
+
+			} else {
+				sendMessage(w, strconv.Itoa(strike), " 스트라이크, ", strconv.Itoa(ball), " 볼!")
+				Db.Save(&playing)
+				return
+			}
+		}
+		sendMessage(w, "잠깐... 예기치 못한 오류!")
+		log.Println("오류 발생! userkey:", post.Userkey)
 		return
 	}
 }
