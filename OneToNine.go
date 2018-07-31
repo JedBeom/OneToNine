@@ -210,6 +210,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 	if err := Db.Where("userkey = $1", post.Userkey).First(&userinfo).Error; err != nil {
 		userinfo.Userkey = post.Userkey
 		userinfo.isItUpdated = false
+		Db.Create(&userinfo)
 
 		sendMessage(w, "순위에 사용될 닉네임을 입력해주세요. (필수)")
 		return
