@@ -33,6 +33,13 @@ type Record struct {
 	Score     int       `sql:"not null"`
 }
 
+type UserInfo struct {
+	Userkey     string `sql:"not null"`
+	CreatedAt   string `sql:"not null"`
+	Nickname    string
+	isItUpdated bool `sql:"not null"`
+}
+
 var Db *gorm.DB
 
 func init() {
@@ -43,7 +50,7 @@ func init() {
 		panic(err)
 	}
 
-	Db.AutoMigrate(&Playing{}, &Record{})
+	Db.AutoMigrate(&Playing{}, &Record{}, &UserInfo{})
 
 }
 
@@ -182,6 +189,8 @@ func sendMessage(w http.ResponseWriter, message ...string) {
 func messageHandler(w http.ResponseWriter, r *http.Request) {
 	var playing Playing
 
+	var userinfo UserInfo
+
 	var post Post
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&post)
@@ -195,6 +204,25 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 
 	if post.Type != "text" {
 		sendMessage(w, "텍스트 전송만 지원됩니다.")
+		return
+	}
+
+	if err := Db.Where("userkey = $1", post.Userkey).First(&userinfo).Error; err != nil {
+		userinfo.Userkey = post.Userkey
+		userinfo.isItUpdated = false
+
+		sendMessage(w, "순위에 사용될 닉네임을 입력해주세요. (필수)")
+		return
+	}
+
+	if err := Db.Where("userkey = $1", post.Userkey).First(&userinfo).Error; err == nil && userinfo.isItUpdated == false {
+		Db.Delete(&userinfo)
+
+		userinfo.Nickname = post.Content
+		userinfo.isItUpdated = true
+
+		Db.Update(&userinfo)
+		sendMessage(w, userinfo.Nickname, "을(를) 닉네임으로 설정하였습니다. 수정하려면 '수정'이라고 입력해주세요.")
 		return
 	}
 
@@ -212,6 +240,16 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case "순위":
 		sendMessage(w, "순위 기능은 아직 미구현!")
+		return
+	case "수정":
+		Db.Where("userkey = $1", post.Userkey).First(&userinfo)
+		Db.Delete(&userinfo)
+
+		userinfo.isItUpdated = false
+
+		Db.Create(&userinfo)
+
+		sendMessage(w, "예전 닉네임: ", userinfo.Nickname, ", 수정할 닉네임을 입력해주세요.")
 		return
 	default:
 		if _, err := strconv.Atoi(post.Content); err != nil {
@@ -238,22 +276,26 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 
 				record.Score = score
 				record.Userkey = post.Userkey
-				record.Nickname = "미지정"
+
+				Db.Where("userkey = $1", playing.Userkey).First(&userinfo)
+				record.Nickname = userinfo.Nickname
 
 				Db.Create(&record)
 				Db.Delete(Playing{}, "userkey LIKE ?", post.Userkey)
 
-				sendMessage(w, "정답입니다! 당신의 점수는 "+strconv.Itoa(score)+"입니다!\n닉네임을 지정해주세요.")
+				sendMessage(w, "정답입니다! 당신의 점수는 "+strconv.Itoa(score)+"입니다!")
 				return
 
 			} else if strike == 0 && ball == 0 {
 				sendMessage(w, "아웃!")
-				Db.Save(&playing)
+				Db.Delete(&playing)
+				Db.Create(&playing)
 				return
 
 			} else {
 				sendMessage(w, strconv.Itoa(strike), " 스트라이크, ", strconv.Itoa(ball), " 볼!")
-				Db.Save(&playing)
+				Db.Delete(&playing)
+				Db.Create(&playing)
 				return
 			}
 		}
