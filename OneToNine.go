@@ -273,8 +273,15 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 				score := ScoreCalculater(playing.CreatedAt, now, playing.TryCount-1)
 
 				var record Record
+				if err := Db.Where("userkey = $1", playing.Userkey).First(&record).Error; err != nil {
+					record.Score = score
+				} else {
+					Db.Delete(&record)
+					if record.Score < score {
+						record.Score = score
+					}
+				}
 
-				record.Score = score
 				record.Userkey = post.Userkey
 
 				Db.Where("userkey = $1", playing.Userkey).First(&userinfo)
