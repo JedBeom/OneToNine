@@ -209,18 +209,18 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := Db.Where("userkey = $1", post.Userkey).First(&userinfo).Error; err != nil {
 		userinfo.Userkey = post.Userkey
-		userinfo.isItUpdated = false
+		userinfo.IsItUpdated = false
 		Db.Create(&userinfo)
 
 		sendMessage(w, "순위에 사용될 닉네임을 입력해주세요. (필수)")
 		return
 	}
 
-	if err := Db.Where("userkey = $1", post.Userkey).First(&userinfo).Error; err == nil && userinfo.isItUpdated == false {
+	if err := Db.Where("userkey = $1", post.Userkey).First(&userinfo).Error; err == nil && userinfo.IsItUpdated == false {
 		Db.Delete(&userinfo)
 
 		userinfo.Nickname = post.Content
-		userinfo.isItUpdated = true
+		userinfo.IsItUpdated = true
 
 		Db.Create(&userinfo)
 		sendMessage(w, userinfo.Nickname, "을(를) 닉네임으로 설정하였습니다. 수정하려면 '수정'이라고 입력해주세요.")
@@ -246,7 +246,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		Db.Where("userkey = $1", post.Userkey).First(&userinfo)
 		Db.Delete(&userinfo)
 
-		userinfo.isItUpdated = false
+		userinfo.IsItUpdated = false
 
 		Db.Create(&userinfo)
 
