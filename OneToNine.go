@@ -222,7 +222,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		userinfo.Nickname = post.Content
 		userinfo.isItUpdated = true
 
-		Db.Update(&userinfo)
+		Db.Create(&userinfo)
 		sendMessage(w, userinfo.Nickname, "을(를) 닉네임으로 설정하였습니다. 수정하려면 '수정'이라고 입력해주세요.")
 		return
 	}
