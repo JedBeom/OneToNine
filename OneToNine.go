@@ -34,10 +34,10 @@ type Record struct {
 }
 
 type UserInfo struct {
-	Userkey     string `sql:"not null"`
-	CreatedAt   string `sql:"not null"`
+	Userkey     string    `sql:"not null"`
+	CreatedAt   time.Time `sql:"not null"`
 	Nickname    string
-	isItUpdated bool `sql:"not null"`
+	IsItUpdated bool `sql:"not null"`
 }
 
 var Db *gorm.DB
