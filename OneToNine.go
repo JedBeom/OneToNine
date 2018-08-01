@@ -14,23 +14,32 @@ import (
 )
 
 type Post struct {
-	Userkey string `json:"user_key"`
+	Userkey string `json:"user_key" gorm:"primary_key"`
 	Type    string `json:"type"`
 	Content string `json:"content"`
 }
 
 type Playing struct {
-	Userkey      string    `sql:"not null"`
+	Userkey      string    `sql:"not null" gorm:"primary_key"`
 	CreatedAt    time.Time `sql:"not null"`
 	TryCount     int       `sql:"not null"`
 	AnswerNumber string    `sql:"not null"`
 }
 
 type Record struct {
-	Userkey   string    `sql:"not null"`
-	CreatedAt time.Time `sql:"not null"`
-	Nickname  string    `sql:"not null"`
-	Score     int       `sql:"not null"`
+	Userkey     string    `sql:"not null" gorm:"primary_key"`
+	CreatedAt   time.Time `sql:"not null"`
+	TryCount    int       `sql:"not null"`
+	SpendedTime int       `sql:"not null"`
+	Nickname    string    `sql:"not null"`
+	Score       int       `sql:"not null"`
+}
+
+type RecordForShow struct {
+	Userkey  string
+	Rank     int
+	NickName string
+	Score    int
 }
 
 type UserInfo struct {
@@ -104,17 +113,17 @@ func Checker(Original string, Challenger string) (StrikeCount int, BallCount int
 	return
 }
 
-func ScoreCalculater(StartTime time.Time, EndTime time.Time, TryCount int) int {
+func ScoreCalculater(StartTime time.Time, EndTime time.Time, TryCount int) (int, int) {
 	SpendedTimeFloat := EndTime.Sub(StartTime).Seconds()
 
 	SpendedTime := int(SpendedTimeFloat)
 
 	//(180-경과 시간(초)-횟수*5)*100
-	fmt.Println("SpendedTime:", SpendedTime)
-	fmt.Println("TryCount:", TryCount)
+	//fmt.Println("SpendedTime:", SpendedTime)
+	//fmt.Println("TryCount:", TryCount)
 	score := (180 - SpendedTime - TryCount*5) * 100
 
-	return score
+	return score, SpendedTime
 }
 
 func GetThreeRandomNumber() (AnswerNumber string) {
@@ -158,7 +167,7 @@ func play() {
 
 		if strike == 3 {
 			EndTime := time.Now()
-			score := ScoreCalculater(StartTime, EndTime, TryCount+1)
+			score, _ := ScoreCalculater(StartTime, EndTime, TryCount+1)
 
 			fmt.Print("정답! 내 점수는 ", score, "입니다.\n")
 
@@ -240,8 +249,49 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "순위":
-		sendMessage(w, "순위 기능은 아직 미구현!")
+		var record Record
+		if err := Db.Where("userkey = $1", post.Userkey).First(&record).Error; err != nil {
+			sendMessage(w, "일단 게임을 하고 오시는 게 어떨까요?")
+			return
+		}
+
+		var ranking []RecordForShow
+		raw := Db.Raw("select userkey, nickname, score, row_number () over (order by score desc) from records")
+		rows, _ := raw.Rows()
+		for rows.Next() {
+			ranking = ranking[0 : len(ranking)+1]
+			rows.Scan(&ranking[len(ranking)-1])
+		}
+
+		var myRecord RecordForShow
+
+		for _, recordforshow := range ranking {
+			if recordforshow.Userkey == post.Userkey {
+				myRecord = recordforshow
+				break
+			}
+		}
+
+		recordTemplate := "%v등: %v | %v점"
+		splitLine := "-------------"
+		myRecordTemplate := "내 점수: %v등 | %v점"
+
+		var rankers string
+		var ranker string
+
+		n := 0
+		for n < 3 && len(ranking) > n {
+			ranker = fmt.Sprintf(recordTemplate, ranking[n].Rank, ranking[n].NickName, ranking[n].Score)
+			rankers = rankers + ranker + "\\n"
+		}
+
+		myRecordString := fmt.Sprintf(myRecordTemplate, myRecord.Rank, myRecord.Score)
+
+		content := rankers + splitLine + "\\n" + myRecordString
+
+		sendMessage(w, content)
 		return
+
 	case "수정":
 		Db.Where("userkey = $1", post.Userkey).First(&userinfo)
 		Db.Delete(UserInfo{}, "userkey LIKE ?", post.Userkey)
@@ -271,15 +321,17 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 			if strike == 3 {
 				now := time.Now()
 
-				score := ScoreCalculater(playing.CreatedAt, now, playing.TryCount-1)
+				score, SpendedTime := ScoreCalculater(playing.CreatedAt, now, playing.TryCount-1)
 
 				var record Record
 				if err := Db.Where("userkey = $1", playing.Userkey).First(&record).Error; err != nil {
 					record.Score = score
+					record.SpendedTime = SpendedTime
 				} else {
 					Db.Delete(Record{}, "userkey LIKE ?", post.Userkey)
 					if record.Score < score {
 						record.Score = score
+						record.SpendedTime = SpendedTime
 					}
 				}
 
