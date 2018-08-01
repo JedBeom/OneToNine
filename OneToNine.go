@@ -217,7 +217,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := Db.Where("userkey = $1", post.Userkey).First(&userinfo).Error; err == nil && userinfo.IsItUpdated == false {
-		Db.Delete(&userinfo)
+		Db.Delete(UserInfo{}, "userkey LIKE ?", post.Userkey)
 
 		userinfo.Nickname = post.Content
 		userinfo.IsItUpdated = true
@@ -244,7 +244,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	case "수정":
 		Db.Where("userkey = $1", post.Userkey).First(&userinfo)
-		Db.Delete(&userinfo)
+		Db.Delete(UserInfo{}, "userkey LIKE ?", post.Userkey)
 
 		userinfo.IsItUpdated = false
 
@@ -254,7 +254,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		if _, err := strconv.Atoi(post.Content); err != nil {
-			sendMessage(w, "'시작', '순위'를 입력하실 수 있습니다.")
+			sendMessage(w, "'시작', '순위', '수정'을 입력하실 수 있습니다.")
 			return
 		}
 
@@ -277,7 +277,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 				if err := Db.Where("userkey = $1", playing.Userkey).First(&record).Error; err != nil {
 					record.Score = score
 				} else {
-					Db.Delete(&record)
+					Db.Delete(Record{}, "userkey LIKE ?", post.Userkey)
 					if record.Score < score {
 						record.Score = score
 					}
@@ -296,16 +296,19 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 
 			} else if strike == 0 && ball == 0 {
 				sendMessage(w, "아웃!")
-				Db.Delete(&playing)
+				Db.Delete(Playing{}, "userkey LIKE ?", post.Userkey)
 				Db.Create(&playing)
 				return
 
 			} else {
 				sendMessage(w, strconv.Itoa(strike), " 스트라이크, ", strconv.Itoa(ball), " 볼!")
-				Db.Delete(&playing)
+				Db.Delete(Playing{}, "userkey LIKE ?", post.Userkey)
 				Db.Create(&playing)
 				return
 			}
+		} else {
+			sendMessage(w, "아직 게임이 시작하지 않았습니다. '시작'을 입력해주세요.")
+			return
 		}
 		sendMessage(w, "잠깐... 예기치 못한 오류!")
 		log.Println("오류 발생! userkey:", post.Userkey)
