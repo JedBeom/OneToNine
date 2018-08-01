@@ -313,7 +313,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := Db.Where("userkey = $1", playing.Userkey).First(&playing).Error; err == nil {
+		if err := Db.First(&playing).Error; err == nil {
 			playing.TryCount++
 
 			strike, ball := Checker(playing.AnswerNumber, post.Content)
