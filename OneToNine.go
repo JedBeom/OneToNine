@@ -259,7 +259,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		raw := Db.Raw("select userkey, nickname, score, row_number () over (order by score desc) from records")
 		rows, _ := raw.Rows()
 		for rows.Next() {
-			ranking = ranking[0 : len(ranking)+1]
+			ranking = append(ranking, RecordForShow{})
 			rows.Scan(&ranking[len(ranking)-1])
 		}
 
@@ -327,11 +327,13 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 				if err := Db.Where("userkey = $1", playing.Userkey).First(&record).Error; err != nil {
 					record.Score = score
 					record.SpendedTime = SpendedTime
+					record.TryCount = playing.TryCount
 				} else {
 					Db.Delete(Record{}, "userkey LIKE ?", post.Userkey)
 					if record.Score < score {
 						record.Score = score
 						record.SpendedTime = SpendedTime
+						record.TryCount = playing.TryCount
 					}
 				}
 
