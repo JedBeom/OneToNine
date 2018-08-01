@@ -238,7 +238,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch post.Content {
 	case "시작":
-		if err := Db.Where("userkey = $1", playing.Userkey).First(&playing).Error; err != nil {
+		if err := Db.First(&playing).Error; err != nil {
 			playing.AnswerNumber = GetThreeRandomNumber()
 			Db.Create(&playing)
 			sendMessage(w, "게임이 시작되었습니다. 추리를 시작해주세요.")
