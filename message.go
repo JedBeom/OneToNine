@@ -105,8 +105,16 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		var myRecord Record
 		raw := Db.Raw("select userkey, nickname, score, row_number () over (order by score desc) from records")
 
-		row := raw.Where("userkey = $1", post.Userkey).Row()
-		row.Scan(&myRecord.Userkey, &myRecord.Nickname, &myRecord.Score, &myRecord.rank)
+		rows, err := raw.Where("userkey = $1", post.Userkey).Rows()
+		if err != nil {
+			sendMessage(w, "일단 게임은 하고 오는 게 어때?")
+			return
+		}
+
+		for rows.Next() {
+
+			rows.Scan(&myRecord.Userkey, &myRecord.Nickname, &myRecord.Score, &myRecord.rank)
+		}
 
 		scoreTemplate := "%v등 %v %v점"
 		content := fmt.Sprintf(scoreTemplate, myRecord.rank, myRecord.Nickname, myRecord.Score)
