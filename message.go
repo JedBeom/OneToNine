@@ -106,7 +106,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		var myRecord RecordForShow
 
 		//rows, err := Db.Raw("select userkey, nickname, score, row_number () over (order by score desc) from records").Where("userkey = $1", post.Userkey).Rows()
-		err := Db.Table("records").Order("score desc").Where("userkey = ?", post.Userkey).Select("userkey, nickname, score, row_number () over (order by score desc)").First(&myRecord).Error
+		err := Db.Table("records").Order("score desc").Select("userkey, nickname, score, row_number () over (order by score desc)").Where("userkey = ?", post.Userkey).First(&myRecord).Error
 		if err != nil {
 			log.Println(err)
 			sendMessage(w, "일단 게임은 하고 오는 게 어때?")
