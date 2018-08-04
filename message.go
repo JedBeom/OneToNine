@@ -103,7 +103,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 			content := rankers + splitLine + "\\n" + myRecordString
 		*/
 		var myRecord Record
-		rows, err := Db.Raw("select userkey, nickname, score, row_number () over (order by score desc) from records").Where("userkey = ?", post.Userkey)
+		rows, err := Db.Raw("select userkey, nickname, score, row_number () over (order by score desc) from records").Where("userkey = ?", post.Userkey).Rows()
 		if err != nil {
 			sendMessage(w, "일단 게임은 하고 오는 게 어때?")
 			return
