@@ -24,14 +24,13 @@ type Record struct {
 	SpendedTime int       `sql:"not null"`
 	Nickname    string    `sql:"not null"`
 	Score       int       `sql:"not null"`
-	rank        int
 }
 
 type RecordForShow struct {
-	Userkey  string
-	Rank     int
-	NickName string
-	Score    int
+	Userkey   string
+	Nickname  string
+	Score     int
+	RowNumber int
 }
 
 type UserInfo struct {
