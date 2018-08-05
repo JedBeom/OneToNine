@@ -145,8 +145,13 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 
 		Db.Create(&userinfo)
 
-		sendMessage(w, "예전 닉네임: ", userinfo.Nickname, ", 수정할 닉네임을 입력해주세요.")
+		sendMessage(w, "예전 닉네임: ", userinfo.Nickname, "\\n수정할 닉네임을 입력해주세요.")
 		return
+
+	case "힌트":
+		sendMessage(w, "힌트는 없습니다.")
+		return
+
 	default:
 		if _, err := strconv.Atoi(post.Content); err != nil {
 			sendMessage(w, "'시작', '순위', '수정'을 입력하실 수 있습니다.")
