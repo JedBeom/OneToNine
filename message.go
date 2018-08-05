@@ -108,14 +108,14 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 
 		for i, recordforshow := range rankers {
 			if recordforshow.Userkey == post.Userkey {
-				if i > 3 {
+				if i > 2 {
 					myRecord = recordforshow
 					break
 				}
 
 			}
 
-			if i <= 3 {
+			if i <= 2 {
 
 				rankerByTemplate := fmt.Sprintf(recordTemplate, recordforshow.RowNumber, recordforshow.Nickname, recordforshow.Score)
 				rankersByTemplate += rankerByTemplate + "\\n"
