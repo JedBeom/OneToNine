@@ -84,29 +84,8 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		/*
-			recordTemplate := "%v등: %v | %v점"
-			splitLine := "-------------"
-			myRecordTemplate := "내 점수: %v등 | %v점"
-
-			var rankers string
-			var ranker string
-
-			n := 0
-			for n < 3 && len(ranking) > n {
-				ranker = fmt.Sprintf(recordTemplate, ranking[n].Rank, ranking[n].NickName, ranking[n].Score)
-				rankers = rankers + ranker + "\\n"
-			}
-
-			myRecordString := fmt.Sprintf(myRecordTemplate, myRecord.Rank, myRecord.Score)
-
-			content := rankers + splitLine + "\\n" + myRecordString
-		*/
-
-		//var myRecord RecordForShow
-
 		//rows, err := Db.Raw("select userkey, nickname, score, row_number () over (order by score desc) from records").Where("userkey = $1", post.Userkey).Rows()
-		rows, err := Db.Table("records").Order("score desc").Select("userkey, nickname, score, row_number () over (order by score desc)").Rows()
+		rows, err := Db.Table("records").Select("userkey, nickname, score, row_number () over (order by score desc)").Rows()
 		if err != nil {
 			log.Println(err)
 			sendMessage(w, "일단 게임은 하고 오는 게 어때?")
@@ -121,10 +100,39 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 			rankers = append(rankers, ranker)
 		}
 
-		log.Println("'순위' was called, 'rankers' has", len(rankers), "items.")
+		var myRecord RecordForShow
+		var rankersByTemplate string
 
-		scoreTemplate := "%v등 %v %v점"
-		content := fmt.Sprintf(scoreTemplate, rankers[0].RowNumber, rankers[0].Nickname, rankers[0].Score)
+		recordTemplate := "%v등: %v | %v점"
+		splitLine := "-------------"
+
+		for i, recordforshow := range rankers {
+			if recordforshow.Userkey == post.Userkey {
+				if i > 3 {
+					myRecord = recordforshow
+					break
+				}
+
+			}
+
+			if i <= 3 {
+
+				rankerByTemplate := fmt.Sprintf(recordTemplate, recordforshow.RowNumber, recordforshow.Nickname, recordforshow.Score)
+				rankersByTemplate += rankerByTemplate + "\\n"
+			}
+
+		}
+
+		var content string
+
+		if myRecord.Userkey != "" {
+			myRecordString := fmt.Sprintf(recordTemplate, myRecord.RowNumber, myRecord.Nickname, myRecord.Score)
+
+			content = rankersByTemplate + splitLine + "\\n" + myRecordString
+		} else {
+			content = rankersByTemplate
+
+		}
 
 		sendMessage(w, content)
 		return
