@@ -117,9 +117,11 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		var ranker RecordForShow
 
 		for rows.Next() {
-			rows.Scan(&ranker)
+			rows.Scan(&ranker.Userkey, &ranker.Nickname, &ranker.Score, &ranker.RowNumber)
 			rankers = append(rankers, ranker)
 		}
+
+		log.Println("'순위' was called, 'rankers' has", len(rankers), "items.")
 
 		scoreTemplate := "%v등 %v %v점"
 		content := fmt.Sprintf(scoreTemplate, rankers[0].RowNumber, rankers[0].Nickname, rankers[0].Score)
