@@ -19,3 +19,6 @@ OneToNine
 
 # practice Directory
 practice
+
+# .DS_Store, a friend of macos.
+.DS_Store
